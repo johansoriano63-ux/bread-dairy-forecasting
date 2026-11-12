@@ -941,7 +941,7 @@ stores.to_csv(f"{APP_DIR}/stores.csv", index=False)
 tft_test = [dict(model="TFT", split="test", family=FAMILIES[f], **metrics({TEST_O: PREDS["TFT"][TEST_O]}, f))
             for f in range(2)] if "TFT" in PREDS else []
 pd.concat([RES[RES.split == "test"], pd.DataFrame(tft_test)]).round(4).to_csv(f"{APP_DIR}/metrics_test.csv", index=False)
-json.dump(dict(main_model=MAIN, config=BEST_CFG, seeds=SEEDS, dairy_life=DAIRY_LIFE, test_origin=TEST_ORIGIN,
+json.dump(dict(smoke=SMOKE, main_model=MAIN, config=BEST_CFG, seeds=SEEDS, dairy_life=DAIRY_LIFE, test_origin=TEST_ORIGIN,
                future_origin=FUTURE_ORIGIN, conformal={k: {FAMILIES[f]: v for f, v in d.items()} for k, d in CONF.items()}),
           open(f"{APP_DIR}/meta.json", "w"), indent=2)
 torch.save({"config": BEST_CFG, "card": CARD, "state_dict": RUNS["LSTM"][SEED]["state_future"]}, f"{OUT_DIR}/lstm_seed42_future.pt")

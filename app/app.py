@@ -27,6 +27,14 @@ def load():
 
 fc, att, stores, met, meta = load()
 FAMILIES = {"BREAD/BAKERY": "Bread / bakery", "DAIRY": "Dairy"}
+REPO = "https://github.com/johansoriano63-ux/bread-dairy-forecasting"
+TEAM = [("Stephany Trujillo", "Student", "stephany.trujillo@estudiantesunibague.edu.co"),
+        ("Johan Soriano", "Student", "johan.soreano@estudiantesunibague.edu.co"),
+        ("Cristian Cardona", "Student", "cristian.cardona@estudiantesunibague.edu.co"),
+        ("Dr. Alexandra La Cruz", "Instructor", "alexandra.lacruz@unibague.edu.co")]
+LINKS = [("📄 Report (paper)", f"{REPO}/tree/main/paper"), ("💻 Code on GitHub", REPO),
+         ("🧪 Experiments in Colab", "https://colab.research.google.com/github/johansoriano63-ux/bread-dairy-forecasting/blob/main/notebooks/Final_Experiments_Bread_Dairy.ipynb"),
+         ("🗂️ Dataset (Google Drive)", ""), ("🎬 Promotional video", "")]
 
 
 def quantile_at(q10, q50, q90, tau):
@@ -93,24 +101,84 @@ if not future:
                           np.where(f.outside & f.outside.shift(1, fill_value=False), "warning", ""))
 
 # ---------------- header ----------------
-st.title(f"{FAMILIES[family]} · store {store}")
-st.caption(f"{sinfo.loc[store, 'city']}, {sinfo.loc[store, 'state']} · type {sinfo.loc[store, 'type']} · "
-           f"cluster {sinfo.loc[store, 'cluster']} · {'16-day forecast' if future else 'backtest against real sales'}")
-c1, c2, c3, c4 = st.columns(4)
-first = f.iloc[0]
-c1.metric(f"Order for {first.date:%b %d}", f"{first.order:,.0f} units",
-          help="Newsvendor quantity" + (" minus usable stock (order-up-to rule)" if life > 1 else ""))
-c2.metric("Expected sales, 16 days", f"{f.q50.sum():,.0f}", f"80 % range {f.q10.sum():,.0f}–{f.q90.sum():,.0f}",
-          delta_color="off")
-c3.metric("Days with promotion", int((f.promo > 0).sum()))
-if future:
-    c4.metric("Paydays / holidays", f"{int(f.payday.sum())} / {int((f.holiday > 0).sum())}")
-else:
-    real = f.loc[f.open > 0, "sales"].sum()
-    wape = 100 * (f.loc[f.open > 0, "sales"] - f.loc[f.open > 0, "q50"]).abs().sum() / max(real, 1)
-    c4.metric("Alerts in the window", int((f.alert != "").sum()), f"WAPE {wape:.1f} %", delta_color="off")
+if meta.get("smoke"):
+    st.warning("⚠️ Demo data from a short test run: the numbers are not the final results yet.")
+st.title("🥖 FreshCast · forecasting and ordering agent for bread and dairy")
+tab0, tab1, tab2, tab3, tab4 = st.tabs(["🏠 About the project", "📈 Forecast & order", "🔍 Why?",
+                                        "🚨 Alerts (all stores)", "📊 Model quality"])
 
-tab1, tab2, tab3, tab4 = st.tabs(["📈 Forecast & order", "🔍 Why?", "🚨 Alerts (all stores)", "📊 Model quality"])
+with tab1:
+    st.header(f"{FAMILIES[family]} · store {store}")
+    st.caption(f"{sinfo.loc[store, 'city']}, {sinfo.loc[store, 'state']} · type {sinfo.loc[store, 'type']} · "
+               f"cluster {sinfo.loc[store, 'cluster']} · {'16-day forecast' if future else 'backtest against real sales'}")
+    c1, c2, c3, c4 = st.columns(4)
+    first = f.iloc[0]
+    c1.metric(f"Order for {first.date:%b %d}", f"{first.order:,.0f} units",
+              help="Newsvendor quantity" + (" minus usable stock (order-up-to rule)" if life > 1 else ""))
+    c2.metric("Expected sales, 16 days", f"{f.q50.sum():,.0f}", f"80 % range {f.q10.sum():,.0f}–{f.q90.sum():,.0f}",
+              delta_color="off")
+    c3.metric("Days with promotion", int((f.promo > 0).sum()))
+    if future:
+        c4.metric("Paydays / holidays", f"{int(f.payday.sum())} / {int((f.holiday > 0).sum())}")
+    else:
+        real = f.loc[f.open > 0, "sales"].sum()
+        wape = 100 * (f.loc[f.open > 0, "sales"] - f.loc[f.open > 0, "q50"]).abs().sum() / max(real, 1)
+        c4.metric("Alerts in the window", int((f.alert != "").sum()), f"WAPE {wape:.1f} %", delta_color="off")
+
+with tab0:
+    st.markdown("## Less waste, fewer empty shelves")
+    st.markdown(
+        "Bread is baked and thrown away the same day; milk and yogurt last only a few days more. Every morning each "
+        "store has to decide **how much to have on the shelf**: too much is waste, too little is a lost sale. "
+        "**FreshCast** is an intelligent agent that learns the daily demand of the **BREAD/BAKERY** and **DAIRY** "
+        "families of 54 Corporación Favorita supermarkets (Ecuador) and turns it into decisions that store staff can use.")
+    a1, a2, a3, a4 = st.columns(4)
+    a1.markdown("##### 📈 Forecast\n16 days ahead, as a range (10–90 %) and not a single number.")
+    a2.markdown("##### 🛒 Order\nHow much to have each day, given how costly a shortage is.")
+    a3.markdown("##### 🔍 Explain\nWhich factors move each day's forecast: promotions, weekday, paydays, holidays.")
+    a4.markdown("##### 🚨 Alert\nWarns when real sales leave the expected range.")
+
+    def kpi(model, fam, col="RMSLE"):
+        r = met[(met.model == model) & (met.family == fam)]
+        return float(r[col].iloc[0]) if len(r) else np.nan
+    st.markdown("### Results on the holdout test (Jul 31 – Aug 15, 2017)")
+    k = st.columns(4)
+    for j, fam in enumerate(FAMILIES):
+        lstm, naive = kpi("LSTM ensemble + conformal", fam), kpi("Seasonal naive", fam)
+        k[2 * j].metric(f"{FAMILIES[fam]}: error vs. naive", f"{100 * (lstm - naive) / naive:+.0f} %",
+                        help="RMSLE reduction of the LSTM with respect to repeating last week's sales")
+        k[2 * j + 1].metric(f"{FAMILIES[fam]}: interval coverage", f"{kpi('LSTM ensemble + conformal', fam, 'Coverage_pct'):.0f} %",
+                            help="Share of days whose real sales fell inside the 10–90 % range (target 80 %)")
+
+    c_left, c_right = st.columns([1, 1.2])
+    with c_left:
+        st.markdown("### How it works")
+        st.markdown(
+            "1. **Data**: 108 daily series (54 stores × 2 families), 2013–2017, with promotions, national, regional "
+            "and local holidays, paydays, oil price and store transactions ([Kaggle Store Sales](https://www.kaggle.com/c/store-sales-time-series-forecasting)).\n"
+            "2. **Neural core**: an **LSTM encoder–decoder** reads 8 weeks of history and the known future "
+            "(promotions, holidays, calendar) and outputs three quantiles per day that can never cross.\n"
+            "3. **Calibration**: 5 training seeds are averaged and the range is corrected with **conformal "
+            "prediction**, so that 80 % of real sales fall inside it.\n"
+            "4. **Decisions**: the **newsvendor** quantile gives the bread order; for dairy an **order-up-to** rule "
+            "discounts the stock carried from previous days.\n"
+            "5. **Explanations**: **integrated gradients**, checked with occlusion and retraining ablations.\n\n"
+            "It was compared, under one protocol, with a seasonal naive model, ETS, quantile LightGBM, a GRU and a "
+            "Temporal Fusion Transformer.")
+    with c_right:
+        st.image(str(Path(__file__).parent / "assets" / "architecture.png"), caption="Architecture of the agent")
+    st.markdown("### What the data show")
+    st.image(str(Path(__file__).parent / "assets" / "eda_dow.png"), width=520,
+             caption="Relative sales by day of week: Sunday sells about 30 % above the mean, Thursday about 20 % below.")
+
+    st.markdown("### Team")
+    t = st.columns(4)
+    for col, (name, role, mail) in zip(t, TEAM):
+        col.markdown(f"**{name}**  \n{role}  \n[{mail}](mailto:{mail})")
+    st.caption("Intelligent Systems course · Faculty of Engineering, Universidad de Ibagué, Colombia · 2026")
+    st.markdown("### Resources")
+    st.markdown(" · ".join(f"[{label}]({url})" if url else f"{label} (coming soon)" for label, url in LINKS))
+    st.info("👈 Use the panel on the left to pick a store and a family, then open the **Forecast & order** tab.")
 
 with tab1:
     band = alt.Chart(f).mark_area(opacity=.25, color="#1f77b4").encode(
