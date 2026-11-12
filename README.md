@@ -23,7 +23,7 @@ trained as one global model. The agent:
 | How to run it (Spanish guide) | [`docs/GUIA_COLAB.md`](docs/GUIA_COLAB.md) |
 | Dataset (Google Drive) | **DRIVE_LINK** |
 | Promotional video (3 min) | **VIDEO_LINK** |
-| Web application | `streamlit run app/app.py` (or **APP_LINK** if deployed) |
+| Web application | **https://freshcast-bread-dairy.streamlit.app** (or locally: `streamlit run app/app.py`) |
 
 ## Repository structure
 

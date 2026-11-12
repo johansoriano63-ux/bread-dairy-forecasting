@@ -29,6 +29,7 @@ OUT = ROOT / "paper" / "FreshCast_Final_Report.docx"
 GITHUB_URL = "https://github.com/johansoriano63-ux/bread-dairy-forecasting"
 DRIVE_URL = "https://drive.google.com/DRIVE_LINK"
 VIDEO_URL = "https://youtu.be/VIDEO_LINK"
+APP_URL = "https://freshcast-bread-dairy.streamlit.app"
 AUTHORS = [("Stephany Trujillo", "stephany.trujillo@estudiantesunibague.edu.co"),
            ("Johan Soriano", "johan.soreano@estudiantesunibague.edu.co"),
            ("Cristian Cardona", "cristian.cardona@estudiantesunibague.edu.co"),
@@ -291,7 +292,7 @@ p = para(indent=False, after=4); r = p.add_run("Index Terms—"); r.bold = True;
 add_runs(p, "Conformal prediction, dairy, bakery, intelligent agents, LSTM, newsvendor problem, perishable inventory, "
             "probabilistic forecasting, quantile regression, retail, time series.", 9, bold=True)
 p = para(indent=False, after=6)
-add_runs(p, f"Code: {GITHUB_URL} · Dataset: {DRIVE_URL} · Video: {VIDEO_URL}", 8, italic=True)
+add_runs(p, f"Application: {APP_URL} · Code: {GITHUB_URL} · Dataset: {DRIVE_URL} · Video: {VIDEO_URL}", 8, italic=True)
 
 # ----------------------------------------------------------------------------- I. Introduction
 heading("Introduction")
@@ -508,7 +509,7 @@ para("When real sales arrive, a warning is raised if they fall outside the 10–
      "to its baseline value, and 2) retraining ablation, the change of validation RMSLE when the network is retrained "
      "without that factor.")
 subheading("Application and Implementation")
-para("The application, built with Streamlit [36], lets the user choose a store, a family and a period (the August "
+para(f"The application, built with Streamlit [36] and published at {APP_URL}, lets the user choose a store, a family and a period (the August "
      "16–31 forecast or a backtest against the real sales of the test window). It shows the recent sales, the 16-day "
      "forecast with its interval, a control for the cost ratio with the resulting daily order (and the carried stock "
      "for dairy), the factors behind each day's forecast with a short sentence, the series with active alerts and the "
