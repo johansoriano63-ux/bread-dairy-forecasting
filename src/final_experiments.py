@@ -45,9 +45,14 @@ OUT_DIR = os.environ.get("OUT_DIR", "/content/results" if IN_COLAB else "results
 # After a disconnection, simply run all cells again: finished models are loaded from the cache.
 SAVE_TO_DRIVE = True
 if IN_COLAB and SAVE_TO_DRIVE:
-    from google.colab import drive
-    drive.mount("/content/drive")
-    OUT_DIR = "/content/drive/MyDrive/freshcast_results"
+    try:
+        from google.colab import drive
+        if not os.path.exists("/content/drive/MyDrive"): drive.mount("/content/drive")
+        OUT_DIR = "/content/drive/MyDrive/freshcast_results"
+        print("Results will be saved in Google Drive:", OUT_DIR)
+    except Exception as e:
+        print("WARNING: Google Drive could not be mounted (", e, ").\n"
+              "Results are saved in /content/results instead; if Colab disconnects, the run starts again.")
 APP_DIR = os.environ.get("APP_DIR", f"{OUT_DIR}/app_data")
 CACHE_DIR = f"{OUT_DIR}/cache"
 for d in (DATA_DIR, OUT_DIR, APP_DIR, CACHE_DIR): os.makedirs(d, exist_ok=True)

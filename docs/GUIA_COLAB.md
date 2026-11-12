@@ -81,4 +81,5 @@ Si se acaba la cuota de GPU, otro integrante puede seguir con su cuenta: compart
 | `CUDA out of memory` | Entorno de ejecución → Reiniciar sesión → Ejecutar todas (retoma desde la caché). |
 | `TFT could not run: ...` | El resto de resultados sigue siendo válido. Copien el mensaje y envíenmelo. |
 | Pide autorizar Drive otra vez | Normal después de reconectar; acepten. |
+| `credential propagation was unsuccessful` / `mount failed` | La autorización de Drive no se completó. Corran la celda otra vez y en la ventana elijan **la misma cuenta del Colab** y marquen **todas** las casillas de permisos. Si sigue fallando, el notebook continúa sin Drive (aviso `WARNING: Google Drive could not be mounted`) y guarda todo en `/content/results`. |
 | No quieren usar Drive | En la celda de configuración cambien `SAVE_TO_DRIVE = True` por `False` (si se desconecta, empieza de cero). |
