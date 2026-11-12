@@ -1,0 +1,11 @@
+data/*.csv
+data/*.zip
+results/cache/
+results/*.pt
+__pycache__/
+.venv/
+venv/
+.ipynb_checkpoints/
+~$*.docx
+lightning_logs/
+paper/PREVIEW_*.docx
