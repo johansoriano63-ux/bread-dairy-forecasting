@@ -256,6 +256,24 @@ ex = lambda fam: EXPL[EXPL.family == FAM[fam]].set_index("factor")
 top_factor = {f: ex(f).IG_share_pct.idxmax() for f in range(2)}
 abl_top = {f: ex(f).delta_RMSLE_pct.idxmax() for f in range(2)} if "delta_RMSLE_pct" in EXPL else None
 corr = {f: float(np.corrcoef(ex(f).IG_share_pct, ex(f).occlusion_share_pct)[0, 1]) for f in range(2)}
+occ_top = {f: ex(f).occlusion_share_pct.idxmax() for f in range(2)}
+agree_word = lambda c: "agree closely" if c > 0.8 else ("agree moderately" if c > 0.5 else "agree only partially")
+gap = {f: red(rm[f]["LSTM ensemble"], rm[f]["LightGBM ensemble"]) for f in range(2)}   # % lower RMSLE of the LSTM
+def vs_lgb(f):
+    g = gap[f]
+    if abs(g) < 2: return "is on par with" if abs(g) < 1 else ("is slightly better than" if g > 0 else "is slightly worse than")
+    return "outperforms" if g > 0 else "is outperformed by"
+# position of test sales with respect to the recalibrated interval (exported for the app)
+_fc = pd.read_csv(RES_DIR / "app_data" / "forecasts.csv")
+_bt = _fc[(_fc.kind == "backtest") & (_fc.open > 0)]
+below50 = {f: 100 * float((_bt[_bt.family == FAM[f]].sales < _bt[_bt.family == FAM[f]].q50).mean()) for f in range(2)}
+below10 = {f: 100 * float((_bt[_bt.family == FAM[f]].sales < _bt[_bt.family == FAM[f]].q10).mean()) for f in range(2)}
+above90 = {f: 100 * float((_bt[_bt.family == FAM[f]].sales > _bt[_bt.family == FAM[f]].q90).mean()) for f in range(2)}
+TFT_NAMES = {"y": "past sales", "dow": "day of week", "m_cos": "month", "m_sin": "month", "hol_loc": "local holidays",
+             "hol_reg": "regional holidays", "hol_nat": "national holidays", "time_idx": "time index",
+             "relative_time_idx": "position in the window", "dom_cos": "day of month", "dom_sin": "day of month",
+             "trans": "transactions", "promo": "promotions", "oil": "oil price", "payday": "payday",
+             "closed": "closed day", "quake": "earthquake"}
 
 # ----------------------------------------------------------------------------- title block (one column)
 p = para(align=WD_ALIGN_PARAGRAPH.CENTER, indent=False, after=10)
@@ -269,6 +287,13 @@ para(" · ".join(e for _, e in AUTHORS), 8, align=WD_ALIGN_PARAGRAPH.CENTER, ind
 new = doc.add_section(WD_SECTION.CONTINUOUS); set_columns(new, 2)
 
 d_naive = red(rm[1]["LSTM ensemble"], rm[1]["Seasonal naive"]); b_naive = red(rm[0]["LSTM ensemble"], rm[0]["Seasonal naive"])
+bread_best = max(nv(L, 0, "4:1"), float(inv(0, 1, "4:1", "P4").saving_vs_first_pct))
+d_p1, d_p3 = inv(1, DL, "4:1", "P1"), inv(1, DL, "4:1", "P3")
+d_save = 100 * (d_p1.cost - d_p3.cost) / d_p1.cost
+dairy_abs = (f"for dairy, an order-up-to rule that discounts the carried stock costs {d_save:.0f} % less than a daily "
+             "newsvendor that ignores it" if d_save > 0 else
+             f"for dairy, an order-up-to rule that discounts the carried stock does not beat a daily newsvendor "
+             f"({-d_save:.0f} % more cost)")
 abstract = (
     "Bread and dairy are perishable products whose daily replenishment depends on forecasting demand well: what is "
     "not sold is lost and what is missing is a lost sale. We present FreshCast, an intelligent agent for the "
@@ -280,12 +305,12 @@ abstract = (
     "integrated gradients, and everything is delivered in a Streamlit application. Under one protocol, with "
     f"{N_SEEDS} seeds, four rolling validation windows and a 16-day holdout test, the LSTM ensemble reduces RMSLE "
     f"by {b_naive:.0f} % (bread) and {d_naive:.0f} % (dairy) with respect to a seasonal naive model, reaching "
-    f"{rm[0]['LSTM ensemble']:.3f} and {rm[1]['LSTM ensemble']:.3f} against {rm[0]['LightGBM ensemble']:.3f} and "
-    f"{rm[1]['LightGBM ensemble']:.3f} for quantile LightGBM, and recalibration brings interval coverage to "
-    f"{cov[0][L]:.0f} % and {cov[1][L]:.0f} % (target 80 %). The order rules lower the simulated cost of shortages "
-    f"and waste, by up to {max(nv(L, 0, '2:1'), nv(L, 0, '4:1')):.0f} % for bread, and the carried-stock rule cuts "
-    "dairy waste with respect to a daily newsvendor. The study also shows where the network is not better than a "
-    "well-built gradient boosting model.")
+    f"{rm[0]['LSTM ensemble']:.3f} and {rm[1]['LSTM ensemble']:.3f}, close to quantile LightGBM "
+    f"({rm[0]['LightGBM ensemble']:.3f} and {rm[1]['LightGBM ensemble']:.3f}), and recalibration brings interval "
+    f"coverage to {cov[0][L]:.0f} % and {cov[1][L]:.0f} % (target 80 %). In a simulation, ordering a quantile above "
+    f"the median lowers the cost of shortages and leftovers of bread by up to {bread_best:.0f} % when a shortage costs "
+    f"four times a leftover, and {dairy_abs}. The study also shows that the network is not clearly better than a "
+    "well-built gradient boosting model and that its individual runs vary more.")
 p = para(indent=False, after=4); r = p.add_run("Abstract—"); r.bold = True; r.italic = True; r.font.size = Pt(9)
 add_runs(p, abstract, 9, bold=True)
 p = para(indent=False, after=4); r = p.add_run("Index Terms—"); r.bold = True; r.italic = True; r.font.size = Pt(9)
@@ -498,7 +523,8 @@ para("where cu is the cost of a missing unit and co the cost of a leftover one. 
      "daily newsvendor that ignores the stock on hand; P2, order-up-to the median; P3, order-up-to the τ* quantile, "
      "which orders only the difference between the target and the usable stock; and P4, order-up-to a quantile "
      "selected on the validation windows from a grid between 0.1 and 0.9. Cost is cu times the units short plus co "
-     "times the units that expire.")
+     "times the units that expire or are still on hand at the end of the 16-day window (otherwise ordering too much "
+     "in the last days would look free whenever the shelf life exceeds the remaining days).")
 subheading("Anomaly Alerts and Explanations")
 para("When real sales arrive, a warning is raised if they fall outside the 10–90 % interval on two consecutive days, "
      "and a critical alert if they exceed the interval by more than half its width on one day. Explanations use "
@@ -527,8 +553,10 @@ ep = int(pd.read_csv(RES_DIR / "training_curve_lstm.csv").epoch.max())
 para(f"The configuration with hidden size {int(best_cfg.hidden)}, dropout {best_cfg.dropout} and learning rate "
      f"{best_cfg.lr:.0e} obtained the lowest validation pinball loss (Table {ROMAN[t_tune - 1]}), although the "
      "differences between configurations are small. Fig. "
-     f"{f_train} shows that the validation loss flattens after a few epochs and that there is no growing gap between "
-     "the curves that would indicate overfitting; early stopping restores the best epoch.")
+     f"{f_train} shows that the validation loss falls quickly during the first 15 epochs and then only slowly, and "
+     "that there is no growing gap between the curves that would indicate overfitting. For the selected configuration "
+     f"the best epoch was {int(best_cfg.best_epoch)} of a budget of {ep}, so a longer budget could still bring a small "
+     "gain.")
 
 subheading("Forecast Accuracy")
 rows = []
@@ -565,14 +593,16 @@ para(f"Tables {ROMAN[t_test - 1]} and {ROMAN[t_val - 1]} present the results. Fi
      f"the statistical baselines: on the test window the LSTM ensemble reduces RMSLE by {b_naive:.0f} % (bread) and "
      f"{d_naive:.0f} % (dairy) with respect to the seasonal naive model and by "
      f"{red(rm[0]['LSTM ensemble'], rm[0]['ETS']):.0f} % and {red(rm[1]['LSTM ensemble'], rm[1]['ETS']):.0f} % with "
-     f"respect to ETS. Second, for dairy the LSTM ensemble {cmp_word(rm[1]['LSTM ensemble'], rm[1]['LightGBM ensemble'])} "
-     f"the LightGBM ensemble (RMSLE {rm[1]['LSTM ensemble']:.4f} versus {rm[1]['LightGBM ensemble']:.4f}), and the "
-     f"single LSTM beats the single LightGBM in {wins[1]} of {N_SEEDS} seeds. Third, for bread the LSTM ensemble "
-     f"{cmp_word(rm[0]['LSTM ensemble'], rm[0]['LightGBM ensemble'])} LightGBM ({rm[0]['LSTM ensemble']:.4f} versus "
-     f"{rm[0]['LightGBM ensemble']:.4f}; {wins[0]} of {N_SEEDS} seeds in favor of the LSTM). Fourth, the run-to-run "
-     f"standard deviation of the LSTM test RMSLE ({ms('LSTM', 0)[1]:.4f} for bread and {ms('LSTM', 1)[1]:.4f} for "
-     "dairy) is of the same order as some of the differences between models, which is why the paired comparison by "
-     f"seed (Fig. {FIG_N[0] + 1}) and the ensembles are more reliable than a single run. In validation, LightGBM "
+     f"respect to ETS. Second, the LSTM and LightGBM ensembles are close: the LSTM {vs_lgb(0)} LightGBM for bread "
+     f"(RMSLE {rm[0]['LSTM ensemble']:.4f} versus {rm[0]['LightGBM ensemble']:.4f}, {gap[0]:+.1f} %) and "
+     f"{vs_lgb(1)} it for dairy ({rm[1]['LSTM ensemble']:.4f} versus {rm[1]['LightGBM ensemble']:.4f}, "
+     f"{gap[1]:+.1f} %). Third, single runs tell a different story: a single LSTM beats the single LightGBM with the "
+     f"same seed in only {wins[0]} of {N_SEEDS} seeds for bread and {wins[1]} of {N_SEEDS} for dairy, because the "
+     f"run-to-run standard deviation of the LSTM test RMSLE ({ms('LSTM', 0)[1]:.4f} and {ms('LSTM', 1)[1]:.4f}) is "
+     f"several times that of LightGBM ({ms('LightGBM', 0)[1]:.4f} and {ms('LightGBM', 1)[1]:.4f}); averaging the seeds "
+     f"lowers the LSTM RMSLE from a mean of {ms('LSTM', 0)[0]:.4f} to {rm[0]['LSTM ensemble']:.4f} (bread) and from "
+     f"{ms('LSTM', 1)[0]:.4f} to {rm[1]['LSTM ensemble']:.4f} (dairy), much more than it helps LightGBM. Fig. "
+     f"{FIG_N[0] + 1} shows this spread. In validation, LightGBM "
      f"obtains RMSLE {m('LightGBM ensemble', 0, split='validation'):.4f} and {m('LightGBM ensemble', 1, split='validation'):.4f} "
      f"against {m('LSTM ensemble', 0, split='validation'):.4f} and {m('LSTM ensemble', 1, split='validation'):.4f} for "
      "the LSTM, so conclusions drawn from the single 16-day test window must be read with care.")
@@ -601,15 +631,21 @@ t_cal = table(cal_df, "Coverage (%) and Pinball Loss Before and After Conformal 
               note="Val. cov.: raw coverage on the validation windows used to estimate the correction. Target coverage 80 %.",
               widths=[.6, .45, .5, .5, .6, .45, .5])
 f_cov = figure(RES_DIR / "fig_coverage_conformal.png", "Coverage of the 10–90 % interval on the test window before (light) and after (dark) conformal recalibration; the dashed line is the 80 % target.")
-para(f"Table {ROMAN[t_cal - 1]} and Fig. {f_cov} show that the raw intervals are miscalibrated in opposite directions: "
-     f"the statistical baselines are too wide, while the learned models are too narrow on the test window (LSTM "
-     f"ensemble {cov[0]['LSTM ensemble']:.1f} % for bread and {cov[1]['LSTM ensemble']:.1f} % for dairy; LightGBM "
-     f"{cov[0]['LightGBM ensemble']:.1f} % and {cov[1]['LightGBM ensemble']:.1f} %). After recalibration the LSTM "
-     f"reaches {cov[0][L]:.1f} % and {cov[1][L]:.1f} % and LightGBM {cov[0][LG]:.1f} % and {cov[1][LG]:.1f} %, and the "
-     f"pinball loss of the LSTM changes from {m('LSTM ensemble', 0, 'Pinball_log'):.4f} to {m(L, 0, 'Pinball_log'):.4f} "
-     f"(bread) and from {m('LSTM ensemble', 1, 'Pinball_log'):.4f} to {m(L, 1, 'Pinball_log'):.4f} (dairy). The "
-     "correction comes from validation windows that are farther from the end of training than the test window, so it "
-     "can over- or under-correct; coverage guarantees hold only if errors are exchangeable across periods [28].")
+para(f"Table {ROMAN[t_cal - 1]} and Fig. {f_cov} show that, on the validation windows, the raw intervals are "
+     "miscalibrated in opposite directions: ETS is too wide and the learned models are too narrow. On the test window "
+     f"the learned models remain below the target (LSTM ensemble {cov[0]['LSTM ensemble']:.1f} % for bread and "
+     f"{cov[1]['LSTM ensemble']:.1f} % for dairy; LightGBM {cov[0]['LightGBM ensemble']:.1f} % and "
+     f"{cov[1]['LightGBM ensemble']:.1f} %). After recalibration the LSTM reaches {cov[0][L]:.1f} % and "
+     f"{cov[1][L]:.1f} % and LightGBM {cov[0][LG]:.1f} % and {cov[1][LG]:.1f} %, while the pinball loss of the LSTM "
+     f"barely changes ({m('LSTM ensemble', 0, 'Pinball_log'):.4f} to {m(L, 0, 'Pinball_log'):.4f} for bread and "
+     f"{m('LSTM ensemble', 1, 'Pinball_log'):.4f} to {m(L, 1, 'Pinball_log'):.4f} for dairy). The correction can also "
+     f"go wrong: ETS, too wide in validation, is narrowed and falls to {cov[0]['ETS + conformal']:.1f} % and "
+     f"{cov[1]['ETS + conformal']:.1f} % on the test window, where its raw intervals were already too narrow. "
+     "Coverage guarantees hold only if errors are exchangeable across periods [28], and the test window differs "
+     f"from validation: for dairy, real sales fell below the recalibrated LSTM median on {below50[1]:.0f} % of open "
+     f"days, {below10[1]:.0f} % below the 10 % quantile and only {above90[1]:.0f} % above the 90 % quantile (bread: "
+     f"{below50[0]:.0f} %, {below10[0]:.0f} % and {above90[0]:.0f} %), so the models over-forecast dairy in August "
+     "2017 although the total coverage is close to the target.")
 
 subheading("Ordering Decisions")
 nvrows = []
@@ -629,23 +665,38 @@ inv_df = pd.DataFrame(invrows, columns=["Life", "cu:co", "Rule", "τ", "Cost (k)
 inv_df["grp"] = inv_df.Life + inv_df["cu:co"]
 t_inv = table(inv_df.drop(columns="grp"), "Dairy Ordering Rules on the Test Window (Perishable Inventory Simulation)",
               note=("P1: daily newsvendor ignoring stock; P2: order-up-to median; P3: order-up-to τ*; P4: order-up-to τ "
-                    "selected on validation. Cost in thousands of units (cu × short + co × expired). Waste: expired "
-                    "units as % of demand. Fill: share of demand served. LSTM ensemble + conformal."),
+                    "selected on validation. Cost in thousands of units (cu × short + co × leftover). Waste: units "
+                    "expired or left at the end of the window, as % of demand. Fill: share of demand served. LSTM "
+                    "ensemble + conformal."),
               widths=[.4, .45, .4, .4, .6, .6, .55])
 f_inv = figure(RES_DIR / "fig_dairy_policies.png", f"Simulated cost of the four dairy ordering rules on the test window (shelf life {DL} days) and the resulting waste.")
-p1, p3, p4 = inv(1, DL, "4:1", "P1"), inv(1, DL, "4:1", "P3"), inv(1, DL, "4:1", "P4")
-b3, b4 = inv(0, 1, "4:1", "P3"), inv(0, 1, "4:1", "P4")
+p1, p2, p3, p4 = (inv(1, DL, "4:1", k) for k in ["P1", "P2", "P3", "P4"])
+b2, b3, b4 = inv(0, 1, "4:1", "P2"), inv(0, 1, "4:1", "P3"), inv(0, 1, "4:1", "P4")
+s1, s3 = inv(1, 3, "4:1", "P1"), inv(1, 3, "4:1", "P3")
+pct = lambda a, b: 100 * (a.cost - b.cost) / a.cost       # % cost saving of b with respect to a
+def saving_txt(v): return f"{v:.1f} % lower" if v >= 0 else f"{-v:.1f} % higher"
 para(f"For bread (Table {ROMAN[t_nv - 1]}), ordering the τ* quantile of the recalibrated LSTM instead of the median "
-     f"changes the simulated cost by {nv(L, 0, '2:1'):+.1f} % at a 2:1 ratio and {nv(L, 0, '4:1'):+.1f} % at 4:1, "
-     f"against {nv('LSTM ensemble', 0, '4:1'):+.1f} % with the raw intervals, which shows that the quality of the "
-     "upper quantile matters for the decision. In the inventory simulation with one-day life, the τ selected on "
-     f"validation for bread at 4:1 is {b4.tau:.2f} (cost {b4.cost / 1000:,.1f} k versus {b3.cost / 1000:,.1f} k for τ* = "
-     f"{b3.tau:.2f}). For dairy (Table {ROMAN[t_inv - 1]} and Fig. {f_inv}), the daily newsvendor that ignores the "
-     f"stock on hand wastes {p1.waste_pct:.1f} % of demand at 4:1 with a {DL}-day life, while the order-up-to rule "
-     f"with τ* wastes {p3.waste_pct:.1f} % with a fill rate of {p3.fill_rate_pct:.1f} %, a cost change of "
-     f"{p3.saving_vs_first_pct:+.1f} %; the rule tuned on validation (τ = {p4.tau:.2f}) changes the cost by "
-     f"{p4.saving_vs_first_pct:+.1f} %. Accounting for carried stock is therefore what makes the quantile forecast "
-     "useful for a product that lasts several days.")
+     f"gives a {saving_txt(nv(L, 0, '4:1'))} cost when a shortage costs four times a leftover, but a "
+     f"{saving_txt(nv(L, 0, '2:1'))} cost at 2:1; with the raw intervals the figures are "
+     f"{saving_txt(nv('LSTM ensemble', 0, '4:1'))} and {saving_txt(nv('LSTM ensemble', 0, '2:1'))}. Ordering above "
+     "the median pays off only when shortages are clearly more expensive, and it depends on how good the upper "
+     f"quantile is. The τ selected on the validation windows does better: {b4.tau:.2f} at 4:1, with a cost "
+     f"{saving_txt(pct(b2, b4))} than ordering the median (and {saving_txt(pct(b3, b4))} than τ* = {b3.tau:.2f}), at "
+     f"the price of more leftovers ({b4.waste_pct:.1f} % of demand versus {b2.waste_pct:.1f} %). For dairy the "
+     f"single-day comparison is unfavorable (Table {ROMAN[t_nv - 1]}): because the models over-forecast dairy in the "
+     "test window (Section IV-C), raising the order above the median adds leftovers.")
+para(f"The multi-day simulation for dairy (Table {ROMAN[t_inv - 1]} and Fig. {f_inv}) shows the effect of the carried "
+     f"stock. With a {DL}-day life and a 4:1 ratio, the daily newsvendor that ignores the stock on hand costs "
+     f"{p1.cost / 1000:,.1f} k with {p1.waste_pct:.1f} % waste, the order-up-to τ* rule {p3.cost / 1000:,.1f} k "
+     f"({p3.waste_pct:.1f} % waste, fill rate {p3.fill_rate_pct:.1f} %), a {saving_txt(pct(p1, p3))} cost, and the "
+     f"rule tuned on validation (τ = {p4.tau:.2f}) {p4.cost / 1000:,.1f} k, {saving_txt(pct(p1, p4))}; ordering up to "
+     f"the median is the worst rule because of its shortages ({p2.fill_rate_pct:.1f} % fill rate). With a 3-day life "
+     f"the order-up-to τ* rule costs {saving_txt(pct(s1, s3))} than the daily newsvendor "
+     f"({s3.waste_pct:.1f} % versus {s1.waste_pct:.1f} % waste). "
+     + ("Accounting for the carried stock is therefore what makes the quantile forecast useful for a product that "
+        "lasts several days." if pct(p1, p3) > 0 and pct(s1, s3) > 0 else
+        "Discounting the carried stock does not always pay off in this simulation, so the best rule depends on the "
+        "shelf life and the cost ratio, which the application lets the user set."))
 
 subheading("Anomaly Alerts")
 alrows = []
@@ -678,20 +729,30 @@ t_ex = table(ex_df, "Validation of the Explanations (LSTM, Seed 42)",
              widths=[1.0, .5, .6, .6, .7])
 f_ex = figure(RES_DIR / "fig_explanations.png", "Share of attribution by factor of the LSTM median forecast on the test window: integrated gradients versus occlusion.")
 txt = (f"Table {ROMAN[t_ex - 1]} and Fig. {f_ex} compare the three views. Integrated gradients assign the largest share "
-       f"to {top_factor[0].lower()} for bread and to {top_factor[1].lower()} for dairy, and their shares agree closely "
-       f"with occlusion (correlation {corr[0]:.2f} and {corr[1]:.2f}), which means the attributions are faithful to the "
-       "model. ")
+       f"to {top_factor[0].lower()} for bread and to {top_factor[1].lower()} for dairy, while occlusion assigns the "
+       f"largest share to {occ_top[0].lower()} in bread "
+       f"({ex(0).loc[occ_top[0], 'occlusion_share_pct']:.0f} %) and to {occ_top[1].lower()} in dairy "
+       f"({ex(1).loc[occ_top[1], 'occlusion_share_pct']:.0f} %). The two views {agree_word(min(corr.values()))} "
+       f"(correlation of the shares {corr[0]:.2f} and {corr[1]:.2f}): integrated gradients accumulate the gradient "
+       "along the whole path from the neutral week, so a binary input with a steep effect, such as payday, can receive "
+       "a large share even though switching it off alone changes the forecast less. ")
 if abl_top:
     txt += (f"Retraining ablation tests something different, whether the information is needed: removing "
             f"{abl_top[0].lower()} hurts bread the most ({ex(0).loc[abl_top[0], 'delta_RMSLE_pct']:+.1f} % RMSLE) and "
             f"removing {abl_top[1].lower()} hurts dairy the most ({ex(1).loc[abl_top[1], 'delta_RMSLE_pct']:+.1f} %), "
-            "while factors whose removal barely changes the error can be replaced by other inputs that carry similar "
-            "information (for example, recent history already contains the weekly pattern). ")
+            "and every factor contributes, since each removal raises the error. Recent history receives almost no "
+            "attribution because its baseline keeps the mean level of the window, so only its day-to-day variation is "
+            "attributed. ")
 if TFT_ENC is not None:
-    top3 = ", ".join(TFT_ENC.sort_values(ascending=False).index[:3])
-    txt += f"The TFT variable-selection weights rank {top3} first among the encoder variables. "
-txt += ("Integrated gradients depend on the chosen baseline, so in the application the explanation is presented as "
-        "the effect of each factor relative to a neutral week, not as a causal effect.")
+    names = []
+    for k in TFT_ENC.sort_values(ascending=False).index:
+        n_ = TFT_NAMES.get(k, k)
+        if n_ not in names: names.append(n_)
+    txt += (f"The TFT variable-selection weights rank {names[0]}, {names[1]} and {names[2]} first among the encoder "
+            "variables, consistent with the dominance of the weekly pattern. ")
+txt += ("Because the methods do not fully agree and integrated gradients depend on the chosen baseline, the "
+        "application presents the explanation as the effect of each factor relative to a neutral week, an indication "
+        "of what drives the forecast rather than a causal effect.")
 para(txt)
 
 subheading("Application")
@@ -705,15 +766,21 @@ if app_png.exists():
 
 # ----------------------------------------------------------------------------- V. Discussion
 heading("Discussion")
+dairy_lesson = ("for dairy the daily newsvendor accumulates stock and leftovers, and an order-up-to rule that "
+                "accounts for the carried stock is required" if pct(p1, p3) > 0 else
+                "for dairy the comparison between the daily newsvendor and the order-up-to rule depends on the "
+                "shelf life and the cost ratio")
 para("Three lessons stand out. First, the recurrent network is a strong model for these perishable families, clearly "
-     "better than statistical baselines, but its advantage over a well-engineered gradient boosting model depends on "
-     "the family and the period, and the variation between training seeds is of the same order as some differences "
-     "between models; measuring that variability and ensembling seeds is necessary before claiming that one model is "
-     "better, as anticipated by the M5 findings [5]. Second, for a decision-making agent the calibration of the "
-     "intervals matters as much as the accuracy of the median: a simple conformal step estimated on validation data "
-     "changes the order cost and the alert rate more than switching between the learned models. Third, the decision "
-     "rule must match the product: the daily newsvendor is adequate for bread, but for dairy it accumulates stock and "
-     "waste, and an order-up-to rule that accounts for the carried stock is required.")
+     "better than statistical baselines, but it is not clearly better than a well-engineered gradient boosting model: "
+     "the ensembles are within about 1 % of each other, LightGBM is better in validation, and the variation between "
+     "LSTM training seeds is larger than the gap between the models. Measuring that variability and ensembling seeds "
+     "is necessary before claiming that one model is better, as anticipated by the M5 findings [5]. Second, for a "
+     "decision-making agent the calibration of the intervals matters as much as the accuracy of the median: a simple "
+     "conformal step estimated on validation data changes the coverage, the order cost and the alert rate more than "
+     "switching between the learned models, but it cannot fix a shift in the level of demand such as the "
+     "over-forecast of dairy in the test window. Third, the decision rule must match the product and the costs: for "
+     "bread, ordering above the median pays off only when shortages are clearly more expensive than leftovers, and "
+     f"{dairy_lesson}.")
 para("The study has limitations. The dataset has no costs, stock levels or shelf lives, so the decision results are "
      "simulations with assumed ratios and lives, and sales are censored by availability, so the true demand on "
      "stock-out days is unknown. The holdout test is one 16-day window of 2017; conclusions about small differences "
@@ -727,11 +794,13 @@ para("We built and evaluated FreshCast, an intelligent agent that forecasts the 
      "supermarkets as recalibrated quantiles, turns them into orders that respect the shelf life of each family, "
      "raises alerts when sales leave the expected range and explains each forecast by factor, all delivered in a web "
      f"application. The LSTM encoder–decoder, trained as one global model with {N_SEEDS} seeds, reduces RMSLE with "
-     f"respect to the seasonal naive model by {b_naive:.0f} % for bread and {d_naive:.0f} % for dairy, "
-     f"{cmp_word(rm[1]['LSTM ensemble'], rm[1]['LightGBM ensemble'])} quantile LightGBM for dairy and "
-     f"{cmp_word(rm[0]['LSTM ensemble'], rm[0]['LightGBM ensemble'])} it for bread; conformal recalibration brings its "
-     f"coverage to {cov[0][L]:.0f} % and {cov[1][L]:.0f} %; and the order rules reduce the simulated cost of shortages "
-     "and waste, with the carried-stock rule being essential for dairy. Future work includes evaluating on more test "
+     f"respect to the seasonal naive model by {b_naive:.0f} % for bread and {d_naive:.0f} % for dairy and, as a seed "
+     f"ensemble, {vs_lgb(0)} quantile LightGBM for bread and {vs_lgb(1)} it for dairy, although single LightGBM runs "
+     f"are more stable; conformal recalibration brings its coverage to {cov[0][L]:.0f} % and {cov[1][L]:.0f} %; and "
+     f"ordering a quantile chosen for the cost ratio lowers the simulated cost of bread by up to {bread_best:.0f} %, "
+     + ("while for dairy the carried-stock rule is essential. " if pct(p1, p3) > 0 else
+        "while for dairy the best rule depends on the shelf life. ")
+     + "Future work includes evaluating on more test "
      "windows, using stock and cost data from a real store, censored-demand corrections, a joint multi-day "
      "optimization of the dairy order and a field study of how store staff use the explanations.")
 

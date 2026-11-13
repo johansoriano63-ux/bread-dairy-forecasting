@@ -1,0 +1,11 @@
+family,factor,IG_share_pct,occlusion_share_pct,occlusion_mean_abs_log,delta_RMSLE_pct
+BREAD/BAKERY,Recent history,0.345,0.212,0.0,1.847
+BREAD/BAKERY,Day of week,13.249,48.307,0.112,2.528
+BREAD/BAKERY,Payday,32.17,19.118,0.044,1.97
+BREAD/BAKERY,Holiday,8.862,8.609,0.02,2.361
+BREAD/BAKERY,Promotion,45.374,23.755,0.055,4.874
+DAIRY,Recent history,0.47,0.251,0.001,1.88
+DAIRY,Day of week,21.5,48.154,0.124,9.085
+DAIRY,Payday,38.275,19.955,0.052,3.903
+DAIRY,Holiday,9.811,10.894,0.028,1.89
+DAIRY,Promotion,29.945,20.747,0.054,6.578

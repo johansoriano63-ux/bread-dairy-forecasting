@@ -1,0 +1,21 @@
+model,family,cost_ratio,tau_star,cost_median,cost_newsvendor,saving_pct
+LSTM ensemble,BREAD/BAKERY,2:1,0.667,70562,71002,-0.62
+LSTM ensemble,DAIRY,2:1,0.667,76128,97523,-28.1
+LSTM ensemble,BREAD/BAKERY,4:1,0.8,116510,99093,14.95
+LSTM ensemble,DAIRY,4:1,0.8,101516,132682,-30.7
+LSTM ensemble + conformal,BREAD/BAKERY,2:1,0.667,70562,72658,-2.97
+LSTM ensemble + conformal,DAIRY,2:1,0.667,76128,93048,-22.23
+LSTM ensemble + conformal,BREAD/BAKERY,4:1,0.8,116510,103126,11.49
+LSTM ensemble + conformal,DAIRY,4:1,0.8,101516,123812,-21.96
+LightGBM ensemble,BREAD/BAKERY,2:1,0.667,69352,71793,-3.52
+LightGBM ensemble,DAIRY,2:1,0.667,81100,96331,-18.78
+LightGBM ensemble,BREAD/BAKERY,4:1,0.8,112134,98851,11.85
+LightGBM ensemble,DAIRY,4:1,0.8,113282,128779,-13.68
+LightGBM ensemble + conformal,BREAD/BAKERY,2:1,0.667,69352,74355,-7.21
+LightGBM ensemble + conformal,DAIRY,2:1,0.667,81100,93895,-15.78
+LightGBM ensemble + conformal,BREAD/BAKERY,4:1,0.8,112134,103848,7.39
+LightGBM ensemble + conformal,DAIRY,4:1,0.8,113282,123830,-9.31
+GRU ensemble + conformal,BREAD/BAKERY,2:1,0.667,73018,77171,-5.69
+GRU ensemble + conformal,DAIRY,2:1,0.667,83999,99247,-18.15
+GRU ensemble + conformal,BREAD/BAKERY,4:1,0.8,119021,110095,7.5
+GRU ensemble + conformal,DAIRY,4:1,0.8,111091,129323,-16.41

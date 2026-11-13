@@ -1,0 +1,9 @@
+model,family,days_outside_pct,warnings,critical,stores_with_alert
+LSTM ensemble,BREAD/BAKERY,23.15,59,33,34
+LSTM ensemble,DAIRY,20.02,49,19,35
+LSTM ensemble + conformal,BREAD/BAKERY,22.34,55,26,36
+LSTM ensemble + conformal,DAIRY,20.25,50,25,35
+LightGBM ensemble,BREAD/BAKERY,27.78,80,31,35
+LightGBM ensemble,DAIRY,26.16,74,31,41
+LightGBM ensemble + conformal,BREAD/BAKERY,24.31,68,17,32
+LightGBM ensemble + conformal,DAIRY,19.91,45,17,31

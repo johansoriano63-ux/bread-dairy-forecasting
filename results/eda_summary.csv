@@ -1,0 +1,3 @@
+family,weekend_vs_weekday,payday_vs_other,national_holiday_vs_other,promo_vs_no_promo,dow_Mon,dow_Tue,dow_Wed,dow_Thu,dow_Fri,dow_Sat,dow_Sun
+BREAD/BAKERY,1.342,1.023,1.053,1.168,1.015,0.928,0.912,0.829,0.872,1.123,1.322
+DAIRY,1.393,1.031,1.189,1.41,0.988,0.91,0.941,0.795,0.86,1.181,1.324

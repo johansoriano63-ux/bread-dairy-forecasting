@@ -75,6 +75,9 @@ def cached(name, fn):
     """Store expensive results so the script can be resumed."""
     path = f"{CACHE_DIR}/{name}.pkl"
     if os.path.exists(path):
+        import torch, io
+        if not torch.cuda.is_available():   # cache written on a GPU, read on a CPU-only machine
+            torch.storage._load_from_bytes = lambda b: torch.load(io.BytesIO(b), map_location="cpu", weights_only=False)
         with open(path, "rb") as f: return pickle.load(f)
     out = fn()
     with open(path, "wb") as f: pickle.dump(out, f)
@@ -686,7 +689,7 @@ NV = pd.DataFrame(NV); NV.to_csv(f"{OUT_DIR}/newsvendor_final.csv", index=False)
 # the order. Dairy keeps several days, so we simulate a perishable inventory (FIFO, shelf life `DAIRY_LIFE` days,
 # no lead time) and compare: (P1) ordering the newsvendor quantity every day ignoring the stock on hand,
 # (P2) order-up-to the median, (P3) order-up-to the τ* quantile, and (P4) order-up-to a quantile τ selected on the
-# four validation windows. Cost = c_u · units short + c_o · units expired.
+# four validation windows. Cost = c_u · units short + c_o · (units expired + units left at the end of the window).
 
 # %%
 def simulate(levels, demand, open_, life, carry=True):
@@ -701,6 +704,9 @@ def simulate(levels, demand, open_, life, carry=True):
             take = np.minimum(stock[:, a], rem); stock[:, a] -= take; rem -= take; sold_v += take
         short_v += rem; waste_v += stock[:, 0]
         stock[:, :-1] = stock[:, 1:]; stock[:, -1] = 0
+    # stock still on hand at the end of the window is charged as leftover; otherwise over-ordering in the
+    # last days of the window would look free whenever the shelf life is longer than the remaining days
+    waste_v += stock.sum(1)
     return short_v, waste_v, sold_v
 
 def policy_cost(preds, origins, fam, tau, ratio, life, carry):

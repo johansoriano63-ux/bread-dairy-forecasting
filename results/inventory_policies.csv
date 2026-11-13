@@ -1,0 +1,23 @@
+family,shelf_life,cost_ratio,policy,tau,cost,waste_pct,fill_rate_pct,saving_vs_first_pct
+DAIRY,7,2:1,"P1 newsvendor, ignores stock",0.6666666666666666,3328,0.0,99.77,0.0
+DAIRY,7,2:1,P2 order-up-to median,0.5,25387,0.0,98.24,-662.8
+DAIRY,7,2:1,P3 order-up-to tau*,0.6666666666666666,12245,0.0,99.15,-267.9
+DAIRY,7,2:1,P4 order-up-to tau (validation),0.9,5185,0.0,99.64,-55.8
+DAIRY,7,4:1,"P1 newsvendor, ignores stock",0.8,1618,0.0,99.94,0.0
+DAIRY,7,4:1,P2 order-up-to median,0.5,50775,0.0,98.24,-3038.1
+DAIRY,7,4:1,P3 order-up-to tau*,0.8,14786,0.0,99.49,-813.8
+DAIRY,7,4:1,P4 order-up-to tau (validation),0.9,10370,0.0,99.64,-540.9
+DAIRY,3,2:1,"P1 newsvendor, ignores stock",0.6666666666666666,9295,0.83,99.77,0.0
+DAIRY,3,2:1,P2 order-up-to median,0.5,25387,0.0,98.24,-173.1
+DAIRY,3,2:1,P3 order-up-to tau*,0.6666666666666666,12245,0.0,99.15,-31.7
+DAIRY,3,2:1,P4 order-up-to tau (validation),0.9,5185,0.0,99.64,44.2
+DAIRY,3,4:1,"P1 newsvendor, ignores stock",0.8,20567,2.63,99.94,0.0
+DAIRY,3,4:1,P2 order-up-to median,0.5,50775,0.0,98.24,-146.9
+DAIRY,3,4:1,P3 order-up-to tau*,0.8,14786,0.0,99.49,28.1
+DAIRY,3,4:1,P4 order-up-to tau (validation),0.9,10370,0.0,99.64,49.6
+BREAD/BAKERY,1,2:1,P2 order-up-to median,0.5,70562,5.27,95.08,0.0
+BREAD/BAKERY,1,2:1,P3 order-up-to tau*,0.6666666666666666,72658,10.23,97.33,-3.0
+BREAD/BAKERY,1,2:1,P4 order-up-to tau (validation),0.6,69317,8.02,96.59,1.8
+BREAD/BAKERY,1,4:1,P2 order-up-to median,0.5,116510,5.27,95.08,0.0
+BREAD/BAKERY,1,4:1,P3 order-up-to tau*,0.8,103126,15.38,98.32,11.5
+BREAD/BAKERY,1,4:1,P4 order-up-to tau (validation),0.7,97222,11.41,97.65,16.6
