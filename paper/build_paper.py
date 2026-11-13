@@ -688,11 +688,15 @@ para(f"For bread (Table {ROMAN[t_nv - 1]}), ordering the τ* quantile of the rec
 para(f"The multi-day simulation for dairy (Table {ROMAN[t_inv - 1]} and Fig. {f_inv}) shows the effect of the carried "
      f"stock. With a {DL}-day life and a 4:1 ratio, the daily newsvendor that ignores the stock on hand costs "
      f"{p1.cost / 1000:,.1f} k with {p1.waste_pct:.1f} % waste, the order-up-to τ* rule {p3.cost / 1000:,.1f} k "
-     f"({p3.waste_pct:.1f} % waste, fill rate {p3.fill_rate_pct:.1f} %), a {saving_txt(pct(p1, p3))} cost, and the "
-     f"rule tuned on validation (τ = {p4.tau:.2f}) {p4.cost / 1000:,.1f} k, {saving_txt(pct(p1, p4))}; ordering up to "
-     f"the median is the worst rule because of its shortages ({p2.fill_rate_pct:.1f} % fill rate). With a 3-day life "
-     f"the order-up-to τ* rule costs {saving_txt(pct(s1, s3))} than the daily newsvendor "
-     f"({s3.waste_pct:.1f} % versus {s1.waste_pct:.1f} % waste). "
+     f"({p3.waste_pct:.1f} % waste, fill rate {p3.fill_rate_pct:.1f} %), a cost {saving_txt(pct(p1, p3))}, and the "
+     f"rule tuned on validation (τ = {p4.tau:.2f}) {p4.cost / 1000:,.1f} k, a cost {saving_txt(pct(p1, p4))}; "
+     f"ordering up to the median ({p2.cost / 1000:,.1f} k) wastes little but has the most shortages "
+     f"({p2.fill_rate_pct:.1f} % fill rate). "
+     + (f"With a 3-day life the results are the same, because every unsold unit is charged either when it expires or "
+        f"at the end of the window, and the order-up-to rules keep the stock younger than three days. "
+        if abs(s3.cost - p3.cost) < 1 and abs(s1.cost - p1.cost) < 1 else
+        f"With a 3-day life the order-up-to τ* rule has a cost {saving_txt(pct(s1, s3))} than the daily newsvendor "
+        f"({s3.waste_pct:.1f} % versus {s1.waste_pct:.1f} % waste). ")
      + ("Accounting for the carried stock is therefore what makes the quantile forecast useful for a product that "
         "lasts several days." if pct(p1, p3) > 0 and pct(s1, s3) > 0 else
         "Discounting the carried stock does not always pay off in this simulation, so the best rule depends on the "
@@ -730,9 +734,11 @@ t_ex = table(ex_df, "Validation of the Explanations (LSTM, Seed 42)",
 f_ex = figure(RES_DIR / "fig_explanations.png", "Share of attribution by factor of the LSTM median forecast on the test window: integrated gradients versus occlusion.")
 txt = (f"Table {ROMAN[t_ex - 1]} and Fig. {f_ex} compare the three views. Integrated gradients assign the largest share "
        f"to {top_factor[0].lower()} for bread and to {top_factor[1].lower()} for dairy, while occlusion assigns the "
-       f"largest share to {occ_top[0].lower()} in bread "
-       f"({ex(0).loc[occ_top[0], 'occlusion_share_pct']:.0f} %) and to {occ_top[1].lower()} in dairy "
-       f"({ex(1).loc[occ_top[1], 'occlusion_share_pct']:.0f} %). The two views {agree_word(min(corr.values()))} "
+       + (f"largest share to {occ_top[0].lower()} in both families ({ex(0).loc[occ_top[0], 'occlusion_share_pct']:.0f} % "
+          f"and {ex(1).loc[occ_top[1], 'occlusion_share_pct']:.0f} %). " if occ_top[0] == occ_top[1] else
+          f"largest share to {occ_top[0].lower()} in bread ({ex(0).loc[occ_top[0], 'occlusion_share_pct']:.0f} %) and "
+          f"to {occ_top[1].lower()} in dairy ({ex(1).loc[occ_top[1], 'occlusion_share_pct']:.0f} %). ")
+       + f"The two views {agree_word(min(corr.values()))} "
        f"(correlation of the shares {corr[0]:.2f} and {corr[1]:.2f}): integrated gradients accumulate the gradient "
        "along the whole path from the neutral week, so a binary input with a steep effect, such as payday, can receive "
        "a large share even though switching it off alone changes the forecast less. ")
